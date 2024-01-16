@@ -8,19 +8,241 @@ editor: visual
 
 Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
 
-## Running Code
+## **2.2.1 Plan**
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+In this example, we need to consider two key aspects for our analysis of the Australian elections: the structure of the dataset required and the design of the final graph to visualize our findings.
+
+The dataset must include the names of the seats (referred to as \"divisions\" in Australia) and the parties of the winning candidates. An initial concept of the dataset is illustrated in Figure 2.2 (a).
+
+\(a\) Initial Concept: Dataset Structure for Australian Election Analysis
+
+\(b\) Conceptual Visualization: Graph of Seat Wins by Party
+Figure 2.2: Conceptual Designs for a Dataset and Graph on Australian Election Analysis
+
+The graph needs to effectively display the number of seats won by each party. A preliminary design for this graph is shown in Figure 2.2 (b), aiming to clearly convey the distribution of seat wins among the parties.
 
 ```{r}
-1 + 1
+install.packages("janitor")
+install.packages("knitr")
+install.packages("lubridate")
+install.packages("opendatatoronto")
+install.packages("tidyverse")
+
+library("janitor")
+library("knitr")
+library("lubridate")
+library("opendatatoronto")
+library("tidyverse")
 ```
 
-You can add options to executable code like this
+### **2.2.2 Simulate**
+
+To add depth to our initial concepts, we simulate data that mirrors the real-world scenario.
+
+Begin by creating a new Quarto document in Posit Cloud: navigate through \"File\" → \"New File\" → \"Quarto document\". Name it something relevant like \"Exploring the 2022 Australian Election\", add your authorship, and deselect \"Use visual markdown editor\" as shown in Figure 2.3 (a). Keep other settings default and click \"Create\".
+
+\(a\) Starting a Quarto Document for Election Analysis
+
+\(b\) Installing **`rmarkdown`** if Needed
+
+\(c\) Setting Up with a Descriptive Preamble
+
+\(d\) Running Code Chunks with the Green Arrow
+
+\(e\) Cleaning Output with the Cross Button
+
+\(f\) Rendering the Document Using the Render Button
+Figure 2.3: Steps for Initiating a Quarto Document for Election Analysis
+
+If prompted to install the **`rmarkdown`** package (Figure 2.3 (b)), proceed with installation. Save your Quarto document as \"australian_elections.qmd\".
+
+Clear the default content and under the heading, insert an R code chunk: \"Code\" → \"Insert Chunk\". Document the purpose, author details, date, and prerequisites in the preamble, each line starting with \"#\". This makes it clear to human readers and does not execute as R code. Your preamble should resemble Figure 2.3 (c).
+
+Next, set up your workspace by installing and loading necessary packages like **`tidyverse`** and **`janitor`**. Install these packages as shown in Figure 2.3 (d), and then load them into your workspace.
+
+After setting up, remove any installation messages for clarity (Figure 2.3 (e)) and then render the document to HTML by clicking \"Render\" (Figure 2.3 (f)).
+
+For the simulation, create a dataset with \"Division\" and \"Party\" variables, representing the 151 Australian divisions and five political parties (\"Liberal\", \"Labor\", \"National\", \"Green\", \"Other\"). The simulation can be executed as shown in the respective code chunk.
+
+The simulated dataset will appear as a tibble with 151 rows and 2 columns, as shown in the output snippet.
+
+To share your code for assistance, consider using GitHub Gists. Create a GitHub account, select \"New gist\", and add your entire script, not just the problematic part, for effective help (Figure 2.4).
+
+\(a\) Signing Up on GitHub
+
+\(b\) Creating a New GitHub Gist
+
+\(c\) Sharing Code with a Public GitHub Gist
+Figure 2.4: Using GitHub Gist for Code Sharing and Assistance
 
 ```{r}
-#| echo: false
-2 * 2
+simulated_data <-
+  tibble(
+    # Use 1 through to 151 to represent each division
+    "Division" = 1:151,
+    # Randomly pick an option, with replacement, 151 times
+    "Party" = sample(
+      x = c("Liberal", "Labor", "National", "Green", "Other"),
+      size = 151,
+      replace = TRUE
+    )
+  )
+
+simulated_data
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+### **2.2.3 Acquire**
+
+Now, we aim to acquire actual data from the Australian Electoral Commission (
+
+(AEC). The AEC, being a non-partisan entity, provides comprehensive federal election data. This data can be directly imported into our R environment using the **`read_csv()`** function from the **`readr`** package, which is a part of the **`tidyverse`**.
+
+#### Data Import
+
+Acquire the raw election data using the following code:
+
+```{r}
+#### Read in the data ####
+raw_elections_data <-
+  read_csv(
+    file = 
+      "https://results.aec.gov.au/27966/website/Downloads/HouseMembersElectedDownload-27966.csv",
+    show_col_types = FALSE,
+    skip = 1
+  )
+
+# We have read the data from the AEC website. We may like to save
+# it in case something happens or they move it.
+write_csv(
+  x = raw_elections_data,
+  file = "australian_voting.csv"
+)
+
+```
+
+```{r}
+#### Basic cleaning ####
+raw_elections_data <-
+  read_csv(
+    file = "australian_voting.csv",
+    show_col_types = FALSE
+  )
+# Make the names easier to type
+cleaned_elections_data <-
+  clean_names(raw_elections_data)
+
+# Have a look at the first six rows
+head(cleaned_elections_data)
+
+cleaned_elections_data <-
+  cleaned_elections_data |>
+  select(
+    division_nm,
+    party_nm
+  )
+
+head(cleaned_elections_data)
+
+names(cleaned_elections_data)
+cleaned_elections_data <-
+  cleaned_elections_data |>
+  rename(
+    division = division_nm,
+    elected_party = party_nm
+  )
+
+head(cleaned_elections_data)
+
+cleaned_elections_data$elected_party |>
+  unique()
+```
+
+```{r}
+cleaned_elections_data <-
+  cleaned_elections_data |>
+  select(
+    division_nm,
+    party_nm
+  )
+
+head(cleaned_elections_data)
+
+```
+
+```{r}
+cleaned_elections_data <-
+  cleaned_elections_data |>
+  mutate(
+    elected_party =
+      case_match(
+        elected_party,
+        "Australian Labor Party" ~ "Labor",
+        "Liberal National Party of Queensland" ~ "Liberal",
+        "Liberal" ~ "Liberal",
+        "The Nationals" ~ "Nationals",
+        "The Greens" ~ "Greens",
+        "Independent" ~ "Other",
+        "Katter's Australian Party (KAP)" ~ "Other",
+        "Centre Alliance" ~ "Other"
+      )
+  )
+
+head(cleaned_elections_data)
+
+write_csv(
+  x = cleaned_elections_data,
+  file = "cleaned_elections_data.csv"
+)
+```
+
+### **2.2.4 Explore**
+
+Exploring the dataset we've created is crucial for gaining deeper insights. One effective approach to this is through graphical representation. Specifically, we aim to construct the graph initially envisioned in Figure 2.2 (b), which will illustrate the number of seats won by each political party.
+
+#### Reading in the Data
+
+Start by loading the previously cleaned and saved dataset:
+
+#### Counting Seats by Party
+
+To quantify the election results, employ the **`count()`** function from **`dplyr`** to tally the number of seats won by each party:
+
+#### Enhancing the Graph
+
+To refine the visual appeal and clarity, enhance the graph by adjusting the theme and labeling:
+
+```{r}
+#### Read in the data ####
+cleaned_elections_data <-
+  read_csv(
+    file = "cleaned_elections_data.csv",
+    show_col_types = FALSE
+  )
+cleaned_elections_data |>
+  count(elected_party)
+cleaned_elections_data |>
+  ggplot(aes(x = elected_party)) + # aes abbreviates "aesthetics" 
+  geom_bar()
+
+cleaned_elections_data |>
+  ggplot(aes(x = elected_party)) +
+  geom_bar() +
+  theme_minimal() + # Make the theme neater
+  labs(x = "Party", y = "Number of seats") # Make labels more meaningful
+```
+
+### **2.2.5 Share**
+
+After engaging in data downloading, cleaning, and graphing, it's essential to effectively communicate the process and findings. The following paragraphs serve as an example of summarizing the workflow, highlighting the rationale behind the actions, and presenting the key discoveries.
+
+Australia's parliamentary democracy features 151 seats in the House of Representatives, the primary legislative body from which the government is formed. The political landscape is dominated by two major parties, "Liberal" and "Labor", supplemented by two minor parties, "Nationals" and "Greens", along with various smaller parties. The 2022 Federal Election, held on May 21, saw approximately 15 million votes cast. Our focus was on analyzing the distribution of seats won by each party.
+
+For this purpose, we sourced seat-specific election results from the Australian Electoral Commission website. Utilizing the R programming language (R Core Team 2023), along with the tidyverse suite (Wickham et al. 2019) and the janitor package (Firke 2023), we meticulously cleaned and organized the dataset. This groundwork facilitated the creation of an informative graph (Figure 2.5), showcasing the number of seats secured by each political entity.
+
+Our analysis revealed that the Labor Party emerged as the front-runner with 77 seats, closely trailed by the Liberal Party at 48 seats. Among the minor parties, the Nationals and the Greens secured 10 and 4 seats, respectively. Additionally, 10 seats were claimed by Independents and representatives from smaller parties.
+
+The results exhibit a skewness towards the two major parties. This pattern may be indicative of either stable voter preferences in favor of established parties or could be attributed to the inherent advantages enjoyed by major parties, such as extensive national networks and robust funding mechanisms. Delving deeper into the underlying reasons for this distribution remains an area of interest for future research. It's important to note that while the dataset encompasses the entire voting populace, certain groups in Australia face systematic exclusion from voting or encounter greater challenges in exercising their voting rights.
+
+When communicating these findings, it's crucial to tailor the narrative to the audience's needs. The focus should be on crafting a coherent story that resonates with the audience, drawing inspiration from data journalism practices. Examples of audience-focused analysis can be found in works by Cardoso (2020) and Bronner (2020), highlighting the importance of contextually relevant and engaging storytelling in data-driven journalism.
+
+This exercise in data analysis and communication underscores the significance of not only handling data competently but also presenting it in a manner that is both insightful and accessible to the intended audience.
